@@ -3,6 +3,9 @@ package jartoe.common;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * @author Artoe
+ */
 public final class EqualsTest {
 	@Test
 	public void testEmptyCondition() {

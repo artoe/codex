@@ -1,5 +1,8 @@
 package jartoe.common;
 
+/**
+ * @author Artoe
+ */
 public final class Equals {
 	public static boolean eq(Object o1, Object o2) {
 		return eq(o1, o2, null);
