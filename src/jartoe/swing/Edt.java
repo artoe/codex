@@ -6,6 +6,9 @@ import jartoe.concurrency.Threads;
 
 import java.awt.EventQueue;
 
+/**
+ * @author Artoe
+ */
 public final class Edt {
 	public void runOnEdt(Runnable r) {
 		if (EventQueue.isDispatchThread())
