@@ -193,4 +193,58 @@ public final class ByteArrayTest {
 		Assert.assertEquals(256L * (256L * (256L * 255L + 255L) + 0L) + 66L, a.readUnsignedInt());
 		Assert.assertEquals(0, a.available());
 	}
+
+	@Test
+	public void test018ReadSignedLong() {
+		ByteArray a = new ByteArray();
+		a.append(new byte[] { -1, -1 });
+		a.append(new byte[] { 0x33, 0x44 });
+		a.append(new byte[] { -128, 0x55 });
+		a.append(new byte[] { 0x66, 0x77 });
+		Assert.assertEquals("ffff334480556677", Long.toHexString(a.readSignedLong()));
+		Assert.assertEquals(0, a.available());
+	}
+
+	@Test
+	public void test019PeekSignedLong() {
+		ByteArray a = new ByteArray();
+		a.append(new byte[] { -1, -128 });
+		a.append(new byte[] { -1, 0x00 });
+		a.append(new byte[] { -128, 0x00 });
+		a.append(new byte[] { 0x66, -1 });
+		Assert.assertEquals("ff80ff00800066ff", Long.toHexString(a.peekSignedLong()));
+		Assert.assertEquals(8, a.available());
+	}
+
+	@Test
+	public void test020AppendByte() {
+		ByteArray a = new ByteArray();
+		a.appendByte(0xf1);
+		Assert.assertEquals(1, a.available());
+		Assert.assertEquals(0xf1, a.peekUnsignedByte());
+	}
+
+	@Test
+	public void test021AppendShort() {
+		ByteArray a = new ByteArray();
+		a.appendShort(0xfafb);
+		Assert.assertEquals(2, a.available());
+		Assert.assertEquals(0xfafb, a.peekUnsignedShort());
+	}
+
+	@Test
+	public void test022AppendInt() {
+		ByteArray a = new ByteArray();
+		a.appendInt(0xfafbfcfd);
+		Assert.assertEquals(4, a.available());
+		Assert.assertEquals(0xfafbfcfdL, a.peekUnsignedInt());
+	}
+
+	@Test
+	public void test023AppendLong() {
+		ByteArray a = new ByteArray();
+		a.appendLong(0x0102030405060708L);
+		Assert.assertEquals(8, a.available());
+		Assert.assertEquals(0x0102030405060708L, a.peekSignedLong());
+	}
 }

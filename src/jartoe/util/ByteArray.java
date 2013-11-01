@@ -43,6 +43,30 @@ public final class ByteArray {
 		second = array;
 	}
 
+	public void appendByte(int b) {
+		byte[] data = new byte[1];
+		Bytes.writeByte(data, 0, b);
+		append(data);
+	}
+
+	public void appendInt(int i) {
+		byte[] data = new byte[4];
+		Bytes.writeInt(data, 0, i);
+		append(data);
+	}
+
+	public void appendLong(long l) {
+		byte[] data = new byte[8];
+		Bytes.writeLong(data, 0, l);
+		append(data);
+	}
+
+	public void appendShort(int s) {
+		byte[] data = new byte[2];
+		Bytes.writeShort(data, 0, s);
+		append(data);
+	}
+
 	public int available() {
 		return firstLength + second.length - offset;
 	}
@@ -65,6 +89,28 @@ public final class ByteArray {
 		return all;
 	}
 
+	public long peekSignedLong() {
+		byte[] data = new byte[8];
+		peek(data);
+		return Bytes.signedLong(data, 0);
+	}
+
+	public int peekUnsignedByte() {
+		return Bytes.unsignedByte(peek());
+	}
+
+	public long peekUnsignedInt() {
+		byte[] data = new byte[4];
+		peek(data);
+		return Bytes.unsignedInt(data, 0);
+	}
+
+	public int peekUnsignedShort() {
+		byte[] data = new byte[2];
+		peek(data);
+		return Bytes.unsignedShort(data, 0);
+	}
+
 	public int read() {
 		return nextByte(true);
 	}
@@ -81,6 +127,22 @@ public final class ByteArray {
 		byte[] all = new byte[available()];
 		read(all);
 		return all;
+	}
+
+	public long readSignedLong() {
+		return Bytes.signedLong(read(), read(), read(), read(), read(), read(), read(), read());
+	}
+
+	public int readUnsignedByte() {
+		return Bytes.unsignedByte(read());
+	}
+
+	public long readUnsignedInt() {
+		return Bytes.unsignedInt(read(), read(), read(), read());
+	}
+
+	public int readUnsignedShort() {
+		return Bytes.unsignedShort(read(), read());
 	}
 
 	public void skip(int bytes) {
@@ -149,33 +211,5 @@ public final class ByteArray {
 
 	private int toByte(int b) {
 		return 0xff & b;
-	}
-
-	public int peekUnsignedByte() {
-		return Bytes.unsignedByte(peek());
-	}
-
-	public long peekUnsignedInt() {
-		byte[] data = new byte[4];
-		peek(data);
-		return Bytes.unsignedInt(data, 0);
-	}
-
-	public int peekUnsignedShort() {
-		byte[] data = new byte[2];
-		peek(data);
-		return Bytes.unsignedShort(data, 0);
-	}
-
-	public int readUnsignedByte() {
-		return Bytes.unsignedByte(read());
-	}
-
-	public int readUnsignedShort() {
-		return Bytes.unsignedShort(read(), read());
-	}
-
-	public long readUnsignedInt() {
-		return Bytes.unsignedInt(read(), read(), read(), read());
 	}
 }
