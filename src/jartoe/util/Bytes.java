@@ -8,40 +8,40 @@ public final class Bytes {
 		return data[offset];
 	}
 
-	public static int signedInt(byte high, byte b2, byte b3, byte low) {
-		return signedInt(signedShort(high, b2), signedShort(b3, low));
+	public static int signedInt(byte highByte, byte b2, byte b3, byte lowByte) {
+		return signedInt(signedShort(highByte, b2), signedShort(b3, lowByte));
 	}
 
 	public static int signedInt(byte[] data, int offset) {
 		return signedInt(signedShort(data, offset), signedShort(data, offset + 2));
 	}
 
-	public static int signedInt(short high, short low) {
-		int val = high & 0xffff;
+	public static int signedInt(short highShort, short lowShort) {
+		int val = highShort & 0xffff;
 		val <<= 16;
-		val |= low & 0xffff;
+		val |= lowShort & 0xffff;
 		return val;
 	}
 
-	public static long signedLong(byte high, byte b2, byte b3, byte b4, byte b5, byte b6, byte b7, byte low) {
-		return signedLong(signedInt(high, b2, b3, b4), signedInt(b5, b6, b7, low));
+	public static long signedLong(byte highByte, byte b2, byte b3, byte b4, byte b5, byte b6, byte b7, byte lowByte) {
+		return signedLong(signedInt(highByte, b2, b3, b4), signedInt(b5, b6, b7, lowByte));
 	}
 
 	public static long signedLong(byte[] data, int offset) {
 		return signedLong(signedInt(data, offset), signedInt(data, offset + 4));
 	}
 
-	public static long signedLong(int high, int low) {
-		long val = high & 0xffffffff;
+	public static long signedLong(int highInt, int lowInt) {
+		long val = highInt & 0xffffffff;
 		val <<= 32;
-		val |= low & 0xffffffff;
+		val |= lowInt & 0xffffffff;
 		return val;
 	}
 
-	public static short signedShort(byte high, byte low) {
-		int val = high & 0xff;
+	public static short signedShort(int highByte, int lowByte) {
+		int val = highByte & 0xff;
 		val <<= 8;
-		val |= low & 0xff;
+		val |= lowByte & 0xff;
 		return (short) val;
 	}
 
@@ -49,24 +49,30 @@ public final class Bytes {
 		return signedShort(data[offset], data[offset + 1]);
 	}
 
-	public static short unsignedByte(byte b) {
-		return (short) (0xff & b);
+	public static int unsignedByte(int b) {
+		return 0xff & b;
 	}
 
-	public static short unsignedByte(byte[] data, int offset) {
+	public static int unsignedByte(byte[] data, int offset) {
 		return unsignedByte(data[offset]);
 	}
 
 	public static long unsignedInt(byte[] data, int offset) {
-		return unsignedInt(signedShort(data, offset), signedShort(data, offset + 2));
+		int high = unsignedShort(data, offset);
+		int low = unsignedShort(data, offset + 2);
+		System.out.println("<unsignedInt>");
+		System.out.println("<high>" + Integer.toHexString(high) + "</high>");
+		System.out.println("<low>" + Integer.toHexString(low) + "</low>");
+		System.out.println("</unsignedInt>");
+		return unsignedInt(high, low);
 	}
 
-	public static long unsignedInt(short high, short low) {
-		return 0xffffffffL & (high << 16 | low);
+	public static long unsignedInt(int highShort, int lowShort) {
+		return 0xffffffffL & (highShort << 16 | lowShort);
 	}
 
-	public static int unsignedShort(byte high, byte low) {
-		return 0xffff & signedShort(high, low);
+	public static int unsignedShort(int highByte, int lowByte) {
+		return 0xffff & signedShort(highByte, lowByte);
 	}
 
 	public static int unsignedShort(byte[] data, int offset) {
@@ -84,7 +90,7 @@ public final class Bytes {
 		return pos;
 	}
 
-	public static Object writeLong(byte[] to, int offset, long value) {
+	public static int writeLong(byte[] to, int offset, long value) {
 		int pos = writeInt(to, offset, (int) ((value >> 32) & 0xffffffff));
 		pos += writeInt(to, offset + pos, (int) (value & 0xffffffff));
 		return pos;
@@ -94,6 +100,10 @@ public final class Bytes {
 		int pos = writeByte(to, offset, value >> 8);
 		pos += writeByte(to, offset + pos, value);
 		return pos;
+	}
+
+	public static long unsignedInt(int highByte, int b2, int b3, int lowByte) {
+		return unsignedInt(signedShort(highByte, b2), signedShort(b3, lowByte));
 	}
 }
 

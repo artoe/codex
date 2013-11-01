@@ -150,4 +150,32 @@ public final class ByteArray {
 	private int toByte(int b) {
 		return 0xff & b;
 	}
+
+	public int peekUnsignedByte() {
+		return Bytes.unsignedByte(peek());
+	}
+
+	public long peekUnsignedInt() {
+		byte[] data = new byte[4];
+		peek(data);
+		return Bytes.unsignedInt(data, 0);
+	}
+
+	public int peekUnsignedShort() {
+		byte[] data = new byte[2];
+		peek(data);
+		return Bytes.unsignedShort(data, 0);
+	}
+
+	public int readUnsignedByte() {
+		return Bytes.unsignedByte(read());
+	}
+
+	public int readUnsignedShort() {
+		return Bytes.unsignedShort(read(), read());
+	}
+
+	public long readUnsignedInt() {
+		return Bytes.unsignedInt(read(), read(), read(), read());
+	}
 }

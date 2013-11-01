@@ -175,4 +175,22 @@ public final class ByteArrayTest {
 		Assert.assertEquals(1, a.available());
 		Assert.assertEquals(9, a.peek());
 	}
+
+	@Test
+	public void test016PeekUnsignedNumbers() {
+		ByteArray a = new ByteArray(new byte[] { -1, 0x02, -1, 0x04 });
+		Assert.assertEquals(0xff, a.peekUnsignedByte());
+		Assert.assertEquals(0xff02, a.peekUnsignedShort());
+		Assert.assertEquals("ff02ff04", Long.toHexString(a.peekUnsignedInt()));
+		Assert.assertEquals(4, a.available());
+	}
+
+	@Test
+	public void test017ReadUnsignedNumbers() {
+		ByteArray a = new ByteArray(new byte[] { -1, -1, 124, -1, -1, 0, 66 });
+		Assert.assertEquals(255, a.readUnsignedByte());
+		Assert.assertEquals(256 * 255 + 124, a.readUnsignedShort());
+		Assert.assertEquals(256L * (256L * (256L * 255L + 255L) + 0L) + 66L, a.readUnsignedInt());
+		Assert.assertEquals(0, a.available());
+	}
 }
