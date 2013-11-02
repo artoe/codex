@@ -125,10 +125,10 @@ public final class ByteArrayTest {
 	public void test011PeekByte() {
 		ByteArray a = new ByteArray(new byte[] { 1, 2, 3 });
 		Assert.assertEquals(1, a.peek());
-		Assert.assertEquals(1, a.peek());
+		Assert.assertEquals(1, a.peek(0));
+		Assert.assertEquals(2, a.peek(1));
 		Assert.assertEquals(1, a.read());
-		Assert.assertEquals(2, a.read());
-		Assert.assertEquals(3, a.peek());
+		Assert.assertEquals(3, a.peek(1));
 	}
 
 	@Test

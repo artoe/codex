@@ -96,13 +96,13 @@ public final class ByteArray {
 	}
 
 	public int peek(int offset) {
-		if (offset < firstLength) {
+		if (this.offset + offset < firstLength) {
 			if (first instanceof ByteArray)
-				return peek(offset);
-			return Bytes.unsignedByte(((byte[]) first)[offset]);
+				return peek(this.offset + offset);
+			return Bytes.unsignedByte(((byte[]) first)[this.offset + offset]);
 		}
-		if (offset < second.length)
-			return Bytes.unsignedByte(second[offset]);
+		if (this.offset + offset < second.length)
+			return Bytes.unsignedByte(second[this.offset + offset]);
 		return -1;
 	}
 
