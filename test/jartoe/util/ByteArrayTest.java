@@ -247,4 +247,31 @@ public final class ByteArrayTest {
 		Assert.assertEquals(8, a.available());
 		Assert.assertEquals(0x0102030405060708L, a.peekSignedLong());
 	}
+
+	@Test
+	public void test024AppendString() {
+		ByteArray a = new ByteArray();
+		a.appendString("Hello World!");
+		Assert.assertEquals(12, a.available());
+		Assert.assertEquals('H', a.read());
+		Assert.assertEquals('e', a.peek());
+	}
+
+	@Test
+	public void test025ReadString() {
+		ByteArray a = new ByteArray();
+		a.appendString("Hello World!\nHow do you do?");
+		Assert.assertEquals("Hello World!", a.toString(0, 12));
+		Assert.assertEquals("How", a.toString(13, 3));
+		Assert.assertEquals("How do you do?", a.toString(13));
+	}
+
+	@Test
+	public void test026IndexOfByte() {
+		ByteArray a = new ByteArray();
+		a.appendString("Hello World!\nHow do you do?");
+		Assert.assertEquals(12, a.indexOf((byte) '\n'));
+		a.skip(12 + 1);
+		Assert.assertEquals("How do you do?", a.toString());
+	}
 }

@@ -67,8 +67,20 @@ public final class ByteArray {
 		append(data);
 	}
 
+	public void appendString(String str) {
+		// encoding?
+		append(str.getBytes());
+	}
+
 	public int available() {
 		return firstLength + second.length - offset;
+	}
+
+	public int indexOf(byte b) {
+		for (int i = 0; i < available(); i++)
+			if (b == peek(i))
+				return i;
+		return -1;
 	}
 
 	public int peek() {
@@ -81,6 +93,17 @@ public final class ByteArray {
 
 	public int peek(byte[] to, int offset, int length) {
 		return copy(to, offset, length, false);
+	}
+
+	public int peek(int offset) {
+		if (offset < firstLength) {
+			if (first instanceof ByteArray)
+				return peek(offset);
+			return Bytes.unsignedByte(((byte[]) first)[offset]);
+		}
+		if (offset < second.length)
+			return Bytes.unsignedByte(second[offset]);
+		return -1;
 	}
 
 	public byte[] peekAll() {
@@ -148,6 +171,23 @@ public final class ByteArray {
 	public void skip(int bytes) {
 		if (bytes > 0)
 			inc(Math.min(bytes, available()));
+	}
+
+	@Override
+	public String toString() {
+		return new String(peekAll());
+	}
+
+	public String toString(int offset) {
+		return toString(offset, available() - offset);
+	}
+
+	public String toString(int offset, int length) {
+		if (length <= 0)
+			return "";
+		byte[] data = new byte[offset + length];
+		peek(data, 0, offset + length);
+		return new String(data, offset, length);
 	}
 
 	private int copy(byte[] to, int offset, int length, boolean read) {
