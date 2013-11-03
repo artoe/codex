@@ -10,10 +10,10 @@ import java.util.concurrent.Executor;
 public abstract class Operation implements Runnable {
 	private boolean done;
 	private Throwable error;
-	private final Set<Operation> followUps = new HashSet<>();
+	private final Set<Runnable> followUps = new HashSet<>();
 	private boolean running;
 	private boolean suspended;
-	private Executor executor;
+	protected final Executor executor;
 
 	protected Operation() {
 		this(null);
@@ -23,7 +23,7 @@ public abstract class Operation implements Runnable {
 		this.executor = executor == null ? ThreadPool.getInstance() : executor;
 	}
 
-	public final void addFollowUp(Operation operation) {
+	public final void addFollowUp(Runnable operation) {
 		boolean executeNow;
 		synchronized (this) {
 			if (done) {
@@ -34,7 +34,7 @@ public abstract class Operation implements Runnable {
 			}
 		}
 		if (executeNow)
-			operation.execute();
+			execute(operation);
 	}
 
 	public final void execute() {
@@ -87,7 +87,7 @@ public abstract class Operation implements Runnable {
 	}
 
 	private void endExecution(Throwable error) {
-		Set<Operation> followUps = null;
+		Set<Runnable> followUps = null;
 		synchronized (this) {
 			if (!suspended && running) {
 				followUps = new HashSet<>(this.followUps);
@@ -100,9 +100,16 @@ public abstract class Operation implements Runnable {
 		}
 		// do this outside synchronization
 		if (followUps != null) {
-			for (Operation followUp : followUps)
-				followUp.execute();
+			for (Runnable followUp : followUps)
+				execute(followUp);
 		}
+	}
+
+	private void execute(Runnable followUp) {
+		if (followUp instanceof Operation)
+			((Operation) followUp).execute();
+		else
+			executor.execute(followUp);
 	}
 
 	public synchronized final void join() {

@@ -11,10 +11,28 @@ import java.util.List;
 public final class ThreadPool implements ExtendedExecutor {
 	private static final ExtendedExecutor INSTANCE = new ThreadPool();
 
+	public static ExtendedExecutor getInstance() {
+		return INSTANCE;
+	}
+
 	private final Safe safe = new Safe();
 
 	public void execute(List<Runnable> commands) {
-		safe.add(commands);
+		Deque<Runnable> grouped = new LinkedList<>();
+		List<Runnable> ungrouped = new ArrayList<>(commands.size());
+		for (Runnable command : commands) {
+			if (command instanceof GroupOperation)
+				grouped.add(command);
+			else
+				ungrouped.add(command);
+		}
+		List<Runnable> list = new ArrayList<>(grouped.size() + 1);
+		list.addAll(grouped);
+		if (ungrouped.size() <= 1)
+			list.addAll(ungrouped);
+		else
+			list.add(new GroupOperation(ungrouped));
+		executeNoGrouping(list);
 	}
 
 	public void execute(Runnable command) {
@@ -23,6 +41,10 @@ public final class ThreadPool implements ExtendedExecutor {
 
 	public void execute(Runnable... commands) {
 		execute(Arrays.asList(commands));
+	}
+
+	void executeNoGrouping(List<Runnable> commands) {
+		safe.add(commands);
 	}
 
 	public int getCoreCount() {
@@ -53,31 +75,16 @@ public final class ThreadPool implements ExtendedExecutor {
 		}
 
 		public void add(List<Runnable> commands) {
-			Deque<Runnable> grouped = new LinkedList<>();
-			List<Runnable> ungrouped = new ArrayList<>(commands.size());
-			for (Runnable command : commands) {
-				if (command instanceof GroupOperation)
-					grouped.add(command);
-				else
-					ungrouped.add(command);
-			}
 			synchronized (this) {
 				int count = queue.size();
-				queue.addAll(grouped);
-				if (ungrouped.size() <= 1)
-					queue.addAll(ungrouped);
-				else
-					queue.add(new GroupOperation(ungrouped));
+				for (Runnable command : commands)
+					if (command != null)
+						queue.add(command);
 				count = queue.size() - count;
 				if (count > 0) {
 					// TODO
 				}
 			}
-		}
-
-		private void updateCoreCount(long nanos) {
-			_availableProcessors = Runtime.getRuntime().availableProcessors();
-			_availableProcessorsCheck = nanos;
 		}
 
 		public synchronized int getCoreCount() {
@@ -86,9 +93,10 @@ public final class ThreadPool implements ExtendedExecutor {
 				updateCoreCount(nanos);
 			return Math.max(2, _availableProcessors);
 		}
-	}
 
-	public static ExtendedExecutor getInstance() {
-		return INSTANCE;
+		private void updateCoreCount(long nanos) {
+			_availableProcessors = Runtime.getRuntime().availableProcessors();
+			_availableProcessorsCheck = nanos;
+		}
 	}
 }
