@@ -49,12 +49,12 @@ public final class ThreadPool implements ExtendedExecutor {
 		execute(Arrays.asList(commands));
 	}
 
-	void executeNoGrouping(List<Runnable> commands) {
-		safe.add(commands);
-	}
-
 	public int getCoreCount() {
 		return safe.getCoreCount();
+	}
+
+	void executeNoGrouping(List<Runnable> commands) {
+		safe.add(commands);
 	}
 
 	private final class PoolThread extends Thread {
