@@ -7,6 +7,4 @@ public interface ExtendedExecutor extends Executor {
 	void execute(Runnable... commands);
 
 	void execute(List<Runnable> commands);
-
-	int getCoreCount();
 }
