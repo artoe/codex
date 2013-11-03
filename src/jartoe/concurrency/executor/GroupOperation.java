@@ -12,13 +12,11 @@ public final class GroupOperation extends Operation {
 	private static final int DEFAULT_PER_GROUP = 8;
 
 	private final List<Runnable> commands;
-
 	private final Runnable followUp = new Runnable() {
 		public void run() {
 			handleFollowUp();
 		}
 	};
-
 	private int running;
 
 	public GroupOperation(Executor executor, List<? extends Runnable> commands) {
