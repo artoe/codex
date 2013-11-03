@@ -120,6 +120,5 @@ public final class GroupOperation extends Operation {
 				handleFollowUp();
 			}
 		}
-
 	}
 }
