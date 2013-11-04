@@ -24,7 +24,6 @@ public final class ThreadPool implements ExtendedExecutor {
 	private ThreadPool() {}
 
 	public void execute(List<Runnable> commands) {
-		safe.add(commands, true);
 		Deque<Runnable> grouped = new LinkedList<>();
 		List<Runnable> ungrouped = new ArrayList<>(commands.size());
 		for (Runnable command : commands) {
@@ -55,12 +54,12 @@ public final class ThreadPool implements ExtendedExecutor {
 	}
 
 	void executeNoGrouping(List<Runnable> commands) {
-		safe.add(commands, false);
+		safe.add(commands);
 	}
 
 	private final class PoolThread extends Thread {
-		private Runnable op;
 		private boolean die;
+		private Runnable op;
 		private Safe safe;
 
 		PoolThread(Safe safe, int id, Runnable op) {
@@ -74,11 +73,6 @@ public final class ThreadPool implements ExtendedExecutor {
 
 		public synchronized void die() {
 			die = true;
-			notify();
-		}
-
-		public synchronized void wakeUp(Operation op) {
-			this.op = op;
 			notify();
 		}
 
@@ -103,17 +97,23 @@ public final class ThreadPool implements ExtendedExecutor {
 				safe.idle(this);
 			}
 		}
+
+		public synchronized void wakeUp(Runnable op) {
+			this.op = op;
+			notify();
+		}
 	}
 
 	private final class Safe implements Runnable {
-		private long tenSecondsInNanos = Nanos.secondsNs(10);
 		private int _availableProcessors;
 		private long _availableProcessorsCheck;
-		private final List<Runnable> queue = new ArrayList<>();
+		private boolean added;
+		private final Thread handler;
+		private final Deque<PoolThread> idles = new LinkedList<>();
+		private final Deque<Runnable> queue = new LinkedList<>();
+		private long tenSecondsInNanos = Nanos.secondsNs(10);
 		private int threadId;
 		private final List<PoolThread> threads = new ArrayList<>(8);
-		private final List<PoolThread> idles = new ArrayList<>(8);
-		private final Thread handler;
 
 		Safe() {
 			updateCoreCount(System.nanoTime());
@@ -121,6 +121,26 @@ public final class ThreadPool implements ExtendedExecutor {
 			handler.setDaemon(true);
 			handler.setPriority(THREAD_PRIORITY + 1);
 			handler.start();
+		}
+
+		public void add(List<Runnable> commands) {
+			synchronized (this) {
+				int size = queue.size();
+				for (Runnable command : commands)
+					if (command != null)
+						queue.add(command);
+				if (size != queue.size()) {
+					added = true;
+					notify();
+				}
+			}
+		}
+
+		public synchronized int getCoreCount() {
+			long nanos = System.nanoTime();
+			if (nanos - _availableProcessorsCheck >= tenSecondsInNanos)
+				updateCoreCount(nanos);
+			return Math.max(2, _availableProcessors);
 		}
 
 		public void idle(PoolThread poolThread) {
@@ -132,32 +152,17 @@ public final class ThreadPool implements ExtendedExecutor {
 			}
 		}
 
-		public void add(List<Runnable> commands) {
-			synchronized (this) {
-				int size = queue.size();
-				for (Runnable command : commands)
-					if (command != null)
-						queue.add(command);
-				if (size != queue.size())
-					notify();
-			}
-		}
-
-		public synchronized int getCoreCount() {
-			long nanos = System.nanoTime();
-			if (nanos - _availableProcessorsCheck >= tenSecondsInNanos)
-				updateCoreCount(nanos);
-			return Math.max(2, _availableProcessors);
-		}
-
 		public void run() {
 			Nanos n = new Nanos();
 			for (;;) {
 				synchronized (this) {
-					if (!queue.isEmpty()) {
+					if (added)
 						n.reset();
+					if (!queue.isEmpty()) {
 						if (threads.isEmpty())
 							newThread();
+						while (!queue.isEmpty() && !idles.isEmpty())
+							idles.pollFirst().wakeUp(queue.pollFirst());
 						while (threads.size() < getCoreCount() && queue.size() - threads.size() >= 2)
 							newThread();
 					}
@@ -165,7 +170,7 @@ public final class ThreadPool implements ExtendedExecutor {
 					if (n.asNanos() > tenSecondsInNanos) {
 						n.reset();
 						if (!idles.isEmpty())
-							idles.remove(0).die();
+							idles.pollFirst().die();
 					}
 					Threads.wait(this, threads.isEmpty() ? 0 : tenSecondsInNanos);
 				}
@@ -173,7 +178,7 @@ public final class ThreadPool implements ExtendedExecutor {
 		}
 
 		private void newThread() {
-			threads.add(new PoolThread(this, ++threadId, queue.remove(0)));
+			threads.add(new PoolThread(this, ++threadId, queue.pollFirst()));
 		}
 
 		private void updateCoreCount(long nanos) {
