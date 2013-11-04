@@ -4,6 +4,14 @@ public final class Nanos {
 	private static final long HALF_MILLI_NS = 500000L;
 	private static final long MILLI_NS = 1000000L;
 
+	public static long millisNs(long millis) {
+		return 1000000L * millis;
+	}
+
+	public static long secondsNs(int seconds) {
+		return millisNs(1000L * seconds);
+	}
+
 	private long duration;
 	private long start;
 
