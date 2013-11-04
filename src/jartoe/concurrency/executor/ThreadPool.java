@@ -167,7 +167,6 @@ public final class ThreadPool implements ExtendedExecutor {
 						added = false;
 					}
 					if (!queue.isEmpty()) {
-						n.reset();
 						if (threads.isEmpty())
 							newThread();
 						while (!queue.isEmpty() && !idles.isEmpty())
