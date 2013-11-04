@@ -1,6 +1,7 @@
 package jartoe.concurrency.executor;
 
 import jartoe.common.Strings;
+import jartoe.concurrency.Nanos;
 import jartoe.concurrency.Threads;
 
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ public final class ThreadPool implements ExtendedExecutor {
 	private ThreadPool() {}
 
 	public void execute(List<Runnable> commands) {
+		safe.add(commands, true);
 		Deque<Runnable> grouped = new LinkedList<>();
 		List<Runnable> ungrouped = new ArrayList<>(commands.size());
 		for (Runnable command : commands) {
@@ -53,15 +55,17 @@ public final class ThreadPool implements ExtendedExecutor {
 	}
 
 	void executeNoGrouping(List<Runnable> commands) {
-		safe.add(commands);
+		safe.add(commands, false);
 	}
 
 	private final class PoolThread extends Thread {
 		private Runnable op;
 		private boolean die;
+		private Safe safe;
 
-		PoolThread(int id, Runnable op) {
+		PoolThread(Safe safe, int id, Runnable op) {
 			super(Strings.concat("PoolThread-", id));
+			this.safe = safe;
 			this.op = op;
 			setDaemon(true);
 			setPriority(THREAD_PRIORITY);
@@ -74,8 +78,8 @@ public final class ThreadPool implements ExtendedExecutor {
 		}
 
 		public synchronized void wakeUp(Operation op) {
-			notify();
 			this.op = op;
+			notify();
 		}
 
 		@Override
@@ -96,14 +100,13 @@ public final class ThreadPool implements ExtendedExecutor {
 				}
 				if (die)
 					break;
-				synchronized (this) {
-					safe.idle(this);
-				}
+				safe.idle(this);
 			}
 		}
 	}
 
 	private final class Safe implements Runnable {
+		private long tenSecondsInNanos = Nanos.secondsNs(10);
 		private int _availableProcessors;
 		private long _availableProcessorsCheck;
 		private final List<Runnable> queue = new ArrayList<>();
@@ -121,10 +124,12 @@ public final class ThreadPool implements ExtendedExecutor {
 		}
 
 		public void idle(PoolThread poolThread) {
-			synchronized (this) {
-				idles.add(poolThread);
+			synchronized (poolThread) {
+				synchronized (this) {
+					idles.add(poolThread);
+				}
+				Threads.wait(poolThread);
 			}
-			Threads.wait(poolThread);
 		}
 
 		public void add(List<Runnable> commands) {
@@ -140,27 +145,35 @@ public final class ThreadPool implements ExtendedExecutor {
 
 		public synchronized int getCoreCount() {
 			long nanos = System.nanoTime();
-			if (nanos - _availableProcessorsCheck >= 10000000000L)
+			if (nanos - _availableProcessorsCheck >= tenSecondsInNanos)
 				updateCoreCount(nanos);
 			return Math.max(2, _availableProcessors);
 		}
 
 		public void run() {
+			Nanos n = new Nanos();
 			for (;;) {
 				synchronized (this) {
 					if (!queue.isEmpty()) {
+						n.reset();
 						if (threads.isEmpty())
 							newThread();
 						while (threads.size() < getCoreCount() && queue.size() - threads.size() >= 2)
 							newThread();
 					}
+					n.checkpoint();
+					if (n.asNanos() > tenSecondsInNanos) {
+						n.reset();
+						if (!idles.isEmpty())
+							idles.remove(0).die();
+					}
+					Threads.wait(this, threads.isEmpty() ? 0 : tenSecondsInNanos);
 				}
-				//TODO
 			}
 		}
 
 		private void newThread() {
-			threads.add(new PoolThread(++threadId, queue.remove(0)));
+			threads.add(new PoolThread(this, ++threadId, queue.remove(0)));
 		}
 
 		private void updateCoreCount(long nanos) {
