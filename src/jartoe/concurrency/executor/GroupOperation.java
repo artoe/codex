@@ -18,6 +18,7 @@ public final class GroupOperation extends Operation {
 			handleFollowUp();
 		}
 	};
+
 	private int running;
 
 	public GroupOperation(Executor executor, List<? extends Runnable> commands) {
@@ -77,7 +78,7 @@ public final class GroupOperation extends Operation {
 		List<Runnable> list = prepareNextBatch(groupSize);
 		List<Runnable> ops = new ArrayList<>(list.size());
 		for (Runnable op : list)
-			list.add(follow(op));
+			ops.add(follow(op));
 		if (pool != null) {
 			pool.executeNoGrouping(ops);
 		} else if (executor instanceof ExtendedExecutor) {

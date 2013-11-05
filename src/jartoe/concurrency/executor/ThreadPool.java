@@ -99,8 +99,12 @@ public final class ThreadPool implements ExtendedExecutor {
 		}
 
 		public synchronized void wakeUp(Runnable op) {
-			this.op = op;
+			assignOp(op);
 			notify();
+		}
+
+		public void assignOp(Runnable op) {
+			this.op = op;
 		}
 	}
 
@@ -123,16 +127,14 @@ public final class ThreadPool implements ExtendedExecutor {
 			handler.start();
 		}
 
-		public void add(List<Runnable> commands) {
-			synchronized (this) {
-				int size = queue.size();
-				for (Runnable command : commands)
-					if (command != null)
-						queue.add(command);
-				if (size != queue.size()) {
-					added = true;
-					notify();
-				}
+		public synchronized void add(List<Runnable> commands) {
+			int size = queue.size();
+			for (Runnable command : commands)
+				if (command != null)
+					queue.add(command);
+			if (size != queue.size()) {
+				added = true;
+				notify();
 			}
 		}
 
@@ -146,6 +148,10 @@ public final class ThreadPool implements ExtendedExecutor {
 		public void idle(PoolThread poolThread) {
 			synchronized (poolThread) {
 				synchronized (this) {
+					if (!queue.isEmpty()) {
+						poolThread.assignOp(queue.pollFirst());
+						return;
+					}
 					idles.add(poolThread);
 				}
 				Threads.wait(poolThread);
@@ -156,8 +162,10 @@ public final class ThreadPool implements ExtendedExecutor {
 			Nanos n = new Nanos();
 			for (;;) {
 				synchronized (this) {
-					if (added)
+					if (added) {
 						n.reset();
+						added = false;
+					}
 					if (!queue.isEmpty()) {
 						if (threads.isEmpty())
 							newThread();
