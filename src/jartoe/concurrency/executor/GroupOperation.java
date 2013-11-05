@@ -17,6 +17,7 @@ public final class GroupOperation extends Operation {
 			handleFollowUp();
 		}
 	};
+
 	private int running;
 
 	public GroupOperation(Executor executor, List<? extends Runnable> commands) {
