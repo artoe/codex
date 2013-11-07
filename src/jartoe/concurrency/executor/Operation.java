@@ -7,6 +7,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
+/**
+ * @author Artoe
+ */
 public abstract class Operation implements Runnable {
 	private boolean done;
 	private Throwable error;
