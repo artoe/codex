@@ -23,7 +23,7 @@ public final class ThreadPool implements ExtendedExecutor {
 
 	private ThreadPool() {}
 
-	public void execute(List<Runnable> commands) {
+	public void execute(List<? extends Runnable> commands) {
 		Deque<Runnable> grouped = new LinkedList<>();
 		List<Runnable> ungrouped = new ArrayList<>(commands.size());
 		for (Runnable command : commands) {
