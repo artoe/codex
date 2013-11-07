@@ -9,6 +9,9 @@ import java.util.Collections;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * @author Artoe
+ */
 public final class TestThreadPool {
 	@Test
 	public void testExecute() {

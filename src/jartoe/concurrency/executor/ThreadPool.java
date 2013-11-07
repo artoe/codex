@@ -10,6 +10,9 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * @author Artoe
+ */
 public final class ThreadPool implements ExtendedExecutor {
 	public static final int THREAD_PRIORITY = Thread.NORM_PRIORITY;
 
