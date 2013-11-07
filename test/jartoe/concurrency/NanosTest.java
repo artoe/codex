@@ -3,6 +3,9 @@ package jartoe.concurrency;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * @author Artoe
+ */
 public final class NanosTest {
 	@Test
 	public void test001Init() {

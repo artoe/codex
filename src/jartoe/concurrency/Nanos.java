@@ -1,5 +1,8 @@
 package jartoe.concurrency;
 
+/**
+ * @author Artoe
+ */
 public final class Nanos {
 	private static final long HALF_MILLI_NS = 500000L;
 	private static final long MILLI_NS = 1000000L;
