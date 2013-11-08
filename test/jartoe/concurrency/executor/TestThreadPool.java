@@ -5,6 +5,9 @@ import jartoe.concurrency.MutableBoolean;
 import jartoe.concurrency.Nanos;
 import jartoe.concurrency.Threads;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -17,7 +20,14 @@ import org.junit.Test;
  */
 public final class TestThreadPool {
 	@Test
-	public void test001Execute() {
+	public void test001Singleton() {
+		ExtendedExecutor pool = ThreadPool.getInstance();
+		Assert.assertNotNull(pool);
+		Assert.assertSame(pool, ThreadPool.getInstance());
+	}
+
+	@Test
+	public void test002Execute() {
 		final MutableBoolean executed = new MutableBoolean();
 		synchronized (executed) {
 			ThreadPool.getInstance().execute(new Runnable() {
@@ -38,7 +48,7 @@ public final class TestThreadPool {
 	}
 
 	@Test
-	public void test002MultipleExecute() {
+	public void test003MultipleExecute() {
 		final int count = 10;
 		List<Runnable> ops = new ArrayList<>(count);
 		final Mutable<Integer> executed = new Mutable<>(0);
@@ -57,8 +67,8 @@ public final class TestThreadPool {
 		synchronized (executed) {
 			ThreadPool.getInstance().execute(ops);
 			Nanos n = new Nanos();
-			while (executed.get() != count && n.asMillis() < 200L) {
-				Threads.wait(executed, 201L);
+			while (executed.get() != count && n.asMillis() < 500L) {
+				Threads.wait(executed, 501L);
 				n.checkpoint();
 			}
 		}
@@ -66,7 +76,7 @@ public final class TestThreadPool {
 	}
 
 	@Test
-	public void testExecuteBusy() {
+	public void test004ExecuteBusy() {
 		ThreadPool.getInstance().execute(Collections.nCopies(200, new Runnable() {
 			public void run() {
 				Threads.sleep(100L);
@@ -90,4 +100,19 @@ public final class TestThreadPool {
 		}
 		Assert.assertTrue("runnable was not executed", executed.is());
 	}
+
+	@Test
+	public void test005OverrideCoreCount() throws IllegalArgumentException, IllegalAccessException,
+			NoSuchFieldException, SecurityException, NoSuchMethodException, InvocationTargetException {
+		ExtendedExecutor pool = ThreadPool.getInstance();
+		((ThreadPool) pool)._overrideCoreCount(17);
+		Field safeField = ThreadPool.class.getDeclaredField("safe");
+		safeField.setAccessible(true);
+		Object safeObject = safeField.get(pool);
+		Method coreCountMethod = safeObject.getClass().getMethod("getCoreCount");
+		int count = (int) coreCountMethod.invoke(safeObject);
+		Assert.assertEquals(17, count);
+	}
+
+	// TODO test poller and that core count limits number of threads
 }

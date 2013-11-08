@@ -76,7 +76,7 @@ public abstract class Operation implements Runnable {
 		}
 	}
 
-	protected abstract void doOperation() throws Throwable;
+	protected abstract void doOperation() throws Exception;
 
 	protected final void resume(Throwable error) {
 		synchronized (this) {
