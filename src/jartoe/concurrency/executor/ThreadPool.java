@@ -52,6 +52,10 @@ public final class ThreadPool implements ExtendedExecutor {
 		execute(Arrays.asList(commands));
 	}
 
+	public void poller(Runnable poller) {
+		execute(new PollerOperation(poller));
+	}
+
 	public int getCoreCount() {
 		return safe.getCoreCount();
 	}
@@ -195,6 +199,13 @@ public final class ThreadPool implements ExtendedExecutor {
 		private void updateCoreCount(long nanos) {
 			_availableProcessors = Runtime.getRuntime().availableProcessors();
 			_availableProcessorsCheck = nanos;
+		}
+	}
+
+	private final class PollerOperation extends Operation {
+		@Override
+		protected void doOperation() throws Throwable {
+
 		}
 	}
 }
