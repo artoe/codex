@@ -26,6 +26,10 @@ public final class ThreadPool implements ExtendedExecutor {
 
 	private ThreadPool() {}
 
+	void _overrideCoreCount(int coreCount) {
+		safe.setOverrideCoreCount(coreCount);
+	}
+
 	public void execute(List<? extends Runnable> commands) {
 		Deque<Runnable> grouped = new LinkedList<>();
 		List<Runnable> ungrouped = new ArrayList<>(commands.size());
@@ -53,7 +57,7 @@ public final class ThreadPool implements ExtendedExecutor {
 	}
 
 	public void poller(Runnable poller) {
-		execute(new PollerOperation(poller));
+		execute(new Poller(poller));
 	}
 
 	public int getCoreCount() {
@@ -69,8 +73,8 @@ public final class ThreadPool implements ExtendedExecutor {
 		private Runnable op;
 		private Safe safe;
 
-		PoolThread(Safe safe, int id, Runnable op) {
-			super(Strings.concat("PoolThread-", id));
+		PoolThread(Safe safe, String name, Runnable op) {
+			super(name);
 			this.safe = safe;
 			this.op = op;
 			setDaemon(true);
@@ -118,10 +122,12 @@ public final class ThreadPool implements ExtendedExecutor {
 	private final class Safe implements Runnable {
 		private int _availableProcessors;
 		private long _availableProcessorsCheck;
+		private int _override_coreCount;
 		private boolean added;
 		private final Thread handler;
 		private final Deque<PoolThread> idles = new LinkedList<>();
 		private final Deque<Runnable> queue = new LinkedList<>();
+		private final Deque<Runnable> pollers = new LinkedList<>();
 		private long tenSecondsInNanos = Nanos.secondsNs(10);
 		private int threadId;
 		private final List<PoolThread> threads = new ArrayList<>(8);
@@ -134,22 +140,38 @@ public final class ThreadPool implements ExtendedExecutor {
 			handler.start();
 		}
 
+		public synchronized void setOverrideCoreCount(int coreCount) {
+			_override_coreCount = coreCount;
+		}
+
 		public synchronized void add(List<Runnable> commands) {
-			int size = queue.size();
-			for (Runnable command : commands)
-				if (command != null)
-					queue.add(command);
-			if (size != queue.size()) {
-				added = true;
+			boolean added = false;
+			for (Runnable command : commands) {
+				if (command != null) {
+					added = true;
+					if (command instanceof Poller)
+						pollers.add(command);
+					else
+						queue.add(command);
+				}
+			}
+			if (added) {
+				this.added = true;
 				notify();
 			}
 		}
 
 		public synchronized int getCoreCount() {
-			long nanos = System.nanoTime();
-			if (nanos - _availableProcessorsCheck >= tenSecondsInNanos)
-				updateCoreCount(nanos);
-			return Math.max(2, _availableProcessors);
+			int cores;
+			if (_override_coreCount > 0) {
+				cores = _override_coreCount;
+			} else {
+				long nanos = System.nanoTime();
+				if (nanos - _availableProcessorsCheck >= tenSecondsInNanos)
+					updateCoreCount(nanos);
+				cores = _availableProcessors;
+			}
+			return Math.max(2, cores);
 		}
 
 		public void idle(PoolThread poolThread) {
@@ -172,6 +194,8 @@ public final class ThreadPool implements ExtendedExecutor {
 					if (added) {
 						n.reset();
 						added = false;
+						while (!pollers.isEmpty())
+							newThread(pollers.pollFirst());
 					}
 					if (!queue.isEmpty()) {
 						if (threads.isEmpty())
@@ -192,8 +216,17 @@ public final class ThreadPool implements ExtendedExecutor {
 			}
 		}
 
+		private void newThread(Runnable command) {
+			String name;
+			if (command instanceof Poller)
+				name = "PoolThread-Poller-";
+			else
+				name = "PoolThread-";
+			threads.add(new PoolThread(this, Strings.concat(name, ++threadId), command));
+		}
+
 		private void newThread() {
-			threads.add(new PoolThread(this, ++threadId, queue.pollFirst()));
+			newThread(queue.pollFirst());
 		}
 
 		private void updateCoreCount(long nanos) {
@@ -202,10 +235,15 @@ public final class ThreadPool implements ExtendedExecutor {
 		}
 	}
 
-	private final class PollerOperation extends Operation {
-		@Override
-		protected void doOperation() throws Throwable {
+	private final class Poller implements Runnable {
+		private final Runnable poller;
 
+		Poller(Runnable poller) {
+			this.poller = poller;
+		}
+
+		public void run() {
+			poller.run();
 		}
 	}
 }
