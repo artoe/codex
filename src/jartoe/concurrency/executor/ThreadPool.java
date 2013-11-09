@@ -16,19 +16,19 @@ import java.util.List;
 public final class ThreadPool implements ExtendedExecutor {
 	public static final int THREAD_PRIORITY = Thread.NORM_PRIORITY;
 
-	private static final ExtendedExecutor INSTANCE = new ThreadPool();
+	private static final ExtendedExecutor INSTANCE = _instance();
 
 	public static ExtendedExecutor getInstance() {
 		return INSTANCE;
 	}
 
+	static ThreadPool _instance() {
+		return new ThreadPool();
+	}
+
 	private final Safe safe = new Safe();
 
 	private ThreadPool() {}
-
-	void _overrideCoreCount(int coreCount) {
-		safe.setOverrideCoreCount(coreCount);
-	}
 
 	public void execute(List<? extends Runnable> commands) {
 		Deque<Runnable> grouped = new LinkedList<>();
@@ -44,7 +44,7 @@ public final class ThreadPool implements ExtendedExecutor {
 		if (ungrouped.size() <= 1)
 			list.addAll(ungrouped);
 		else
-			list.add(new GroupOperation(ungrouped));
+			list.add(new GroupOperation(this, ungrouped));
 		executeNoGrouping(list);
 	}
 
@@ -56,16 +56,32 @@ public final class ThreadPool implements ExtendedExecutor {
 		execute(Arrays.asList(commands));
 	}
 
-	public void poller(Runnable poller) {
-		execute(new Poller(poller));
-	}
-
 	public int getCoreCount() {
 		return safe.getCoreCount();
 	}
 
+	public void poller(Runnable poller) {
+		execute(new Poller(poller));
+	}
+
+	void _overrideCoreCount(int coreCount) {
+		safe.setOverrideCoreCount(coreCount);
+	}
+
 	void executeNoGrouping(List<Runnable> commands) {
 		safe.add(commands);
+	}
+
+	private final class Poller implements Runnable {
+		private final Runnable poller;
+
+		Poller(Runnable poller) {
+			this.poller = poller;
+		}
+
+		public void run() {
+			poller.run();
+		}
 	}
 
 	private final class PoolThread extends Thread {
@@ -80,6 +96,10 @@ public final class ThreadPool implements ExtendedExecutor {
 			setDaemon(true);
 			setPriority(THREAD_PRIORITY);
 			start();
+		}
+
+		public void assignOp(Runnable op) {
+			this.op = op;
 		}
 
 		public synchronized void die() {
@@ -113,10 +133,6 @@ public final class ThreadPool implements ExtendedExecutor {
 			assignOp(op);
 			notify();
 		}
-
-		public void assignOp(Runnable op) {
-			this.op = op;
-		}
 	}
 
 	private final class Safe implements Runnable {
@@ -126,8 +142,8 @@ public final class ThreadPool implements ExtendedExecutor {
 		private boolean added;
 		private final Thread handler;
 		private final Deque<PoolThread> idles = new LinkedList<>();
-		private final Deque<Runnable> queue = new LinkedList<>();
 		private final Deque<Runnable> pollers = new LinkedList<>();
+		private final Deque<Runnable> queue = new LinkedList<>();
 		private long tenSecondsInNanos = Nanos.secondsNs(10);
 		private int threadId;
 		private final List<PoolThread> threads = new ArrayList<>(8);
@@ -138,10 +154,6 @@ public final class ThreadPool implements ExtendedExecutor {
 			handler.setDaemon(true);
 			handler.setPriority(THREAD_PRIORITY + 1);
 			handler.start();
-		}
-
-		public synchronized void setOverrideCoreCount(int coreCount) {
-			_override_coreCount = coreCount;
 		}
 
 		public synchronized void add(List<Runnable> commands) {
@@ -216,34 +228,25 @@ public final class ThreadPool implements ExtendedExecutor {
 			}
 		}
 
-		private void newThread(Runnable command) {
-			String name;
-			if (command instanceof Poller)
-				name = "PoolThread-Poller-";
-			else
-				name = "PoolThread-";
-			threads.add(new PoolThread(this, Strings.concat(name, ++threadId), command));
+		public synchronized void setOverrideCoreCount(int coreCount) {
+			_override_coreCount = coreCount;
 		}
 
 		private void newThread() {
 			newThread(queue.pollFirst());
 		}
 
+		private void newThread(Runnable command) {
+			if (command instanceof Poller) {
+				new PoolThread(this, Strings.concat("PoolThread-Poller-", ++threadId), command);
+			} else {
+				threads.add(new PoolThread(this, Strings.concat("PoolThread-", ++threadId), command));
+			}
+		}
+
 		private void updateCoreCount(long nanos) {
 			_availableProcessors = Runtime.getRuntime().availableProcessors();
 			_availableProcessorsCheck = nanos;
-		}
-	}
-
-	private final class Poller implements Runnable {
-		private final Runnable poller;
-
-		Poller(Runnable poller) {
-			this.poller = poller;
-		}
-
-		public void run() {
-			poller.run();
 		}
 	}
 }

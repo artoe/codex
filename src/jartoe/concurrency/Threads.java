@@ -20,9 +20,7 @@ public final class Threads {
 
 	public static void wait(Object o, long timeout) {
 		try {
-			synchronized (o) {
-				o.wait(timeout);
-			}
+			o.wait(timeout);
 		} catch (InterruptedException ex) {
 			// ignored
 		}

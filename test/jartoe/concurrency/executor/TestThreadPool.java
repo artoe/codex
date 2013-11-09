@@ -24,13 +24,16 @@ public final class TestThreadPool {
 		ExtendedExecutor pool = ThreadPool.getInstance();
 		Assert.assertNotNull(pool);
 		Assert.assertSame(pool, ThreadPool.getInstance());
+		ThreadPool other = ThreadPool._instance();
+		Assert.assertNotNull(other);
+		Assert.assertNotSame(pool, other);
 	}
 
 	@Test
 	public void test002Execute() {
 		final MutableBoolean executed = new MutableBoolean();
 		synchronized (executed) {
-			ThreadPool.getInstance().execute(new Runnable() {
+			ThreadPool._instance().execute(new Runnable() {
 				public void run() {
 					synchronized (executed) {
 						executed.set(true);
@@ -65,7 +68,7 @@ public final class TestThreadPool {
 			});
 		}
 		synchronized (executed) {
-			ThreadPool.getInstance().execute(ops);
+			ThreadPool._instance().execute(ops);
 			Nanos n = new Nanos();
 			while (executed.get() != count && n.asMillis() < 500L) {
 				Threads.wait(executed, 501L);
@@ -77,14 +80,14 @@ public final class TestThreadPool {
 
 	@Test
 	public void test004ExecuteBusy() {
-		ThreadPool.getInstance().execute(Collections.nCopies(200, new Runnable() {
+		ThreadPool._instance().execute(Collections.nCopies(200, new Runnable() {
 			public void run() {
 				Threads.sleep(100L);
 			}
 		}));
 		final MutableBoolean executed = new MutableBoolean();
 		synchronized (executed) {
-			ThreadPool.getInstance().execute(new Runnable() {
+			ThreadPool._instance().execute(new Runnable() {
 				public void run() {
 					synchronized (executed) {
 						executed.set(true);
@@ -104,7 +107,7 @@ public final class TestThreadPool {
 	@Test
 	public void test005OverrideCoreCount() throws IllegalArgumentException, IllegalAccessException,
 			NoSuchFieldException, SecurityException, NoSuchMethodException, InvocationTargetException {
-		ExtendedExecutor pool = ThreadPool.getInstance();
+		ExtendedExecutor pool = ThreadPool._instance();
 		((ThreadPool) pool)._overrideCoreCount(17);
 		Field safeField = ThreadPool.class.getDeclaredField("safe");
 		safeField.setAccessible(true);
@@ -114,5 +117,88 @@ public final class TestThreadPool {
 		Assert.assertEquals(17, count);
 	}
 
-	// TODO test poller and that core count limits number of threads
+	@Test
+	public void test006CoreCountLimitsThreadCount() {
+		final int coreCount = 17;
+		ThreadPool pool = ThreadPool._instance();
+		pool._overrideCoreCount(coreCount);
+		final Mutable<Integer> started = new Mutable<>(0);
+		final Mutable<Integer> ended = new Mutable<>(0);
+		synchronized (started) {
+			for (int i = 5; --i >= 0;) {
+				pool.execute(Collections.nCopies(20, new Runnable() {
+					public void run() {
+						try {
+							synchronized (started) {
+								int value = started.get().intValue() + 1;
+								started.set(value);
+								if (value == coreCount)
+									started.notify();
+							}
+							for (;;)
+								Threads.sleep(5000L);
+						} finally {
+							synchronized (started) {
+								ended.set(ended.get().intValue() + 1);
+							}
+						}
+					}
+				}));
+			}
+			Nanos n = new Nanos();
+			while (started.get() < coreCount && n.asMillis() < 1000L) {
+				Threads.wait(started, 1000L);
+				n.checkpoint();
+			}
+		}
+		Threads.sleep(400L);
+		synchronized (started) {
+			Assert.assertEquals(coreCount, started.get().intValue());
+			Assert.assertEquals(0, ended.get().intValue());
+		}
+	}
+
+	@Test
+	public void test007PollerDoesNotEatThreads() {
+		final int coreCount = 3;
+		ThreadPool pool = ThreadPool._instance();
+		pool._overrideCoreCount(coreCount);
+		final Mutable<Integer> started = new Mutable<>(0);
+		final MutableBoolean pollerStarted = new MutableBoolean();
+		synchronized (started) {
+			pool.poller(new Runnable() {
+				public void run() {
+					synchronized (started) {
+						pollerStarted.set(true);
+					}
+					for (;;)
+						Threads.sleep(5000L);
+				}
+			});
+			for (int i = 5; --i > 0;) {
+				pool.execute(Collections.nCopies(20, new Runnable() {
+					public void run() {
+						synchronized (started) {
+							int value = started.get().intValue() + 1;
+							started.set(value);
+							if (value == coreCount)
+								started.notify();
+						}
+						for (;;)
+							Threads.sleep(5000L);
+					}
+				}));
+			}
+			Nanos n = new Nanos();
+			while (started.get() < coreCount && n.asMillis() < 1000L) {
+				Threads.wait(started, 1000L);
+				n.checkpoint();
+			}
+		}
+		Threads.sleep(400L);
+		synchronized (started) {
+			Assert.assertEquals(true, pollerStarted.is());
+			Assert.assertEquals(coreCount, started.get().intValue());
+		}
+	}
 }
