@@ -18,7 +18,7 @@ import org.junit.Test;
 /**
  * @author Artoe
  */
-public final class TestThreadPool {
+public final class ThreadPoolTest {
 	@Test
 	public void test001Singleton() {
 		ExtendedExecutor pool = ThreadPool.getInstance();
