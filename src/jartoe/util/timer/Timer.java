@@ -19,31 +19,31 @@ public abstract class Timer implements Runnable {
 		this.interval = interval < MIN_INTERVAL ? MIN_INTERVAL : interval;
 	}
 
-	public Executor getExecutor() {
+	public final Executor getExecutor() {
 		return executor;
 	}
 
-	public long getInterval() {
+	public final long getInterval() {
 		return interval;
 	}
 
-	public int getRepeats() {
+	public final int getRepeats() {
 		return repeats;
 	}
 
-	public boolean isRunning() {
-		return Timers.isRunning(this);
+	public final boolean isRunning() {
+		return TimerThread.getInstance().isRunning(this);
 	}
 
 	public final void restart() {
-		Timers.restart(this);
+		TimerThread.getInstance().restart(this);
 	}
 
 	public final void start() {
-		Timers.start(this);
+		TimerThread.getInstance().start(this);
 	}
 
 	public final void stop() {
-		Timers.stop(this);
+		TimerThread.getInstance().stop(this);
 	}
 }
