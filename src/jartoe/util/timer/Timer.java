@@ -7,16 +7,18 @@ import java.util.concurrent.Executor;
  */
 public abstract class Timer implements Runnable {
 	public static final int FOREVER = 0;
-	public static final long MIN_INTERVAL = 10L;
+	public static final long MIN_INTERVAL = 5L;
 
 	private final Executor executor;
 	private final long interval;
 	private final int repeats;
+	private final Timers timers;
 
 	public Timer(Executor executor, int repeats, long interval) {
 		this.executor = executor;
 		this.repeats = repeats < 0 ? FOREVER : repeats;
 		this.interval = interval < MIN_INTERVAL ? MIN_INTERVAL : interval;
+		this.timers = Timers.getInstance();
 	}
 
 	public final Executor getExecutor() {
@@ -32,18 +34,18 @@ public abstract class Timer implements Runnable {
 	}
 
 	public final boolean isRunning() {
-		return TimerThread.getInstance().isRunning(this);
+		return timers.isRunning(this);
 	}
 
 	public final void restart() {
-		TimerThread.getInstance().restart(this);
+		timers.restart(this);
 	}
 
 	public final void start() {
-		TimerThread.getInstance().start(this);
+		timers.start(this);
 	}
 
 	public final void stop() {
-		TimerThread.getInstance().stop(this);
+		timers.stop(this);
 	}
 }
