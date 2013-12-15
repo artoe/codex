@@ -107,7 +107,8 @@ public final class Timers {
 						Timer timer = context.getTimer();
 						nanos.checkpoint();
 						if (nanos.asMillis() >= timer.getInterval()) {
-							nanos.
+							nanos.addMillis(-timer.getInterval());
+							TODO
 						}
 					}
 					// TODO
